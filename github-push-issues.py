@@ -83,6 +83,7 @@ __ http://www.joelonsoftware.com/articles/fog0000000043.html
 """
 
 import base64
+import codecs
 import contextlib
 import functools
 import getpass
@@ -230,11 +231,12 @@ def walk(template_root):
                     extension))
         response = urlopen(template_root)
         bytes = io.BytesIO(response.read())
+        reader = codecs.getreader('UTF-8')
         directories = {}
         if extension == '.tar.gz':
             with tarfile.open(mode='r:*', fileobj=bytes) as f:
                 def opener(member):
-                    return contextlib.closing(f.extractfile(member))
+                    return contextlib.closing(reader(f.extractfile(member)))
                 for member in f.getmembers():
                     if not member.isfile():
                         continue
@@ -247,6 +249,8 @@ def walk(template_root):
                     yield openers
         elif extension == '.zip':
             with zipfile.ZipFile(bytes) as f:
+                def opener(name):
+                    return reader(f.open(name, 'r'))
                 for name in f.namelist():
                     if name.endswith('/'):
                         continue
@@ -254,7 +258,7 @@ def walk(template_root):
                     if directory not in directories:
                         directories[directory] = {}
                     directories[directory][filename] = functools.partial(
-                        f.open, name, 'r')
+                        opener, name)
                 for directory, openers in sorted(directories.items()):
                     yield openers
     else:
