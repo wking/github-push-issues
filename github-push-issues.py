@@ -103,21 +103,25 @@ if sys.version_info < (3,):  # Python 2
 __version__ = '0.1'
 
 
-class Milestone(object):
-    def __init__(self, title=None, state='open', description=None,
-                 due_on=None):
+class _Entry(object):
+    def __init__(self, title=None, body=None):
         self.title = title
-        self.state = state
-        self.description = description
-        self.due_on = due_on
+        self.body = body
 
     def load(self, stream):
         self.title = stream.readline().strip().strip('#').strip()
         blank = stream.readline().strip()
         if blank:
             raise ValueError(
-                'non-blank line after the milestone title: {!r}'.format(blank))
-        self.description = ''.join(stream.readlines())
+                'non-blank line after the title: {!r}'.format(blank))
+        self.body = ''.join(stream.readlines())
+
+
+class Milestone(_Entry):
+    def __init__(self, state='open', due_on=None, **kwargs):
+        super(Milestone, self).__init__(**kwargs)
+        self.state = state
+        self.due_on = due_on
 
 
 def get_authorization_headers(username=None):
