@@ -84,6 +84,8 @@ __ http://www.joelonsoftware.com/articles/fog0000000043.html
 
 import base64
 import getpass
+import json
+import logging
 import os
 try:
     import readline
@@ -101,12 +103,19 @@ if sys.version_info < (3,):  # Python 2
 
 
 __version__ = '0.1'
+_LOG = logging.getLogger('github-push-issues')
+_LOG.addHandler(logging.StreamHandler())
+_LOG.setLevel(logging.DEBUG)
 
 
 class _Entry(object):
     def __init__(self, title=None, body=None):
         self.title = title
         self.body = body
+        self.headers = {
+            'Accept': 'application/vnd.github.full+json',
+            'Content-Type': 'application/json',
+        }
 
     def load(self, stream):
         self.title = stream.readline().strip().strip('#').strip()
@@ -115,6 +124,32 @@ class _Entry(object):
             raise ValueError(
                 'non-blank line after the title: {!r}'.format(blank))
         self.body = ''.join(stream.readlines())
+
+    def create(self, root_endpoint, repository, authorization_headers):
+        url = self._create_url(
+            root_endpoint=root_endpoint, repository=repository)
+        data = self._create_data()
+        headers = authorization_headers.copy()
+        headers.update(self.headers)
+        request = Request(
+            url=url,
+            data=json.dumps(data),
+            headers=headers,
+            #method='POST',
+        )
+        _LOG.info('{method} {url}'.format(
+            method=request.get_method(),
+            url=request.get_full_url(),
+            ))
+        response = urlopen(request)
+        info = response.info()
+        if info.type != 'application/json':
+            raise ValueError('invalid response type: {}'.format(info.type))
+        payload_bytes = response.read()
+        charset = info.getparam('charset')
+        payload_json = payload_bytes.decode(charset)
+        payload = json.loads(payload_json)
+        self._create_response_json(json=payload)
 
 
 class Issue(_Entry):
@@ -131,6 +166,24 @@ class Milestone(_Entry):
         self.state = state
         self.due_on = due_on
         self.number = None
+
+    def _create_url(self, root_endpoint, repository):
+        return '{}/repos/{}/milestones'.format(
+            root_endpoint.rstrip('/'), repository)
+
+    def _create_data(self):
+        data = {
+            'title': self.title,
+            'state': self.state,
+        }
+        if self.body:
+            data['description'] = self.body
+        if self.due_on:
+            data['due_on'] = self.due_on.isoformat()
+        return data
+
+    def _create_response_json(self, json):
+        self.number = json['number']
 
 
 def get_authorization_headers(username=None):
@@ -152,7 +205,11 @@ def add_issues(root_endpoint='https://api.github.com', username=None,
             milestone = Milestone()
             with open(os.path.join(dirpath, 'README.md'), 'r') as f:
                 milestone.load(stream=f)
-            milestone_number = milestone_number
+            milestone.create(
+                root_endpoint=root_endpoint,
+                authorization_headers=authorization_headers,
+                repository=repository)
+            milestone_number = milestone.number
             filenames.remove('README.md')
         for filename in sorted(filenames):
             if not filename.endswith('.md'):
