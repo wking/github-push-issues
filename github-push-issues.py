@@ -217,7 +217,6 @@ def add_issues(root_endpoint='https://api.github.com', username=None,
             issue = Issue(milestone=milestone_number)
             with open(os.path.join(dirpath, filename), 'r') as f:
                 issue.load(stream=f)
-    print(authorization_headers)
 
 
 if __name__ == '__main__':
