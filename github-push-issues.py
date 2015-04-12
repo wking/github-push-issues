@@ -117,11 +117,20 @@ class _Entry(object):
         self.body = ''.join(stream.readlines())
 
 
+class Issue(_Entry):
+    def __init__(self, assignee=None, milestone=None, labels=None, **kwargs):
+        super(Issue, self).__init__(**kwargs)
+        self.assignee = assignee
+        self.milestone = milestone
+        self.labels = labels
+
+
 class Milestone(_Entry):
     def __init__(self, state='open', due_on=None, **kwargs):
         super(Milestone, self).__init__(**kwargs)
         self.state = state
         self.due_on = due_on
+        self.number = None
 
 
 def get_authorization_headers(username=None):
@@ -138,10 +147,19 @@ def add_issues(root_endpoint='https://api.github.com', username=None,
                repository=None, template_root='.'):
     authorization_headers = get_authorization_headers(username=username)
     for dirpath, dirnames, filenames in os.walk(top=template_root):
+        milestone_number = None
         if 'README.md' in filenames:
             milestone = Milestone()
             with open(os.path.join(dirpath, 'README.md'), 'r') as f:
                 milestone.load(stream=f)
+            milestone_number = milestone_number
+            filenames.remove('README.md')
+        for filename in sorted(filenames):
+            if not filename.endswith('.md'):
+                continue
+            issue = Issue(milestone=milestone_number)
+            with open(os.path.join(dirpath, filename), 'r') as f:
+                issue.load(stream=f)
     print(authorization_headers)
 
 
