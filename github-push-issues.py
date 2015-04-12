@@ -113,7 +113,7 @@ def get_authorization_headers(username=None):
 
 
 def add_issues(root_endpoint='https://api.github.com', username=None,
-               template_root='.'):
+               repository=None, template_root='.'):
     authorization_headers = get_authorization_headers(username=username)
     print(authorization_headers)
 
@@ -133,6 +133,9 @@ if __name__ == '__main__':
         help='GitHub API root endpoint')
     parser.add_argument('-u', '--username', help='GitHub username')
     parser.add_argument(
+        '-r', '--repository',
+        help='GitHub repository (user/repo) to push issues to')
+    parser.add_argument(
         'template_root', metavar='TEMPLATE-ROOT', nargs='?', default='.',
         help='Path or URL for the template directory')
 
@@ -141,4 +144,5 @@ if __name__ == '__main__':
     add_issues(
         root_endpoint=args.root_endpoint,
         username=args.username,
+        repository=args.repository,
         template_root=args.template_root)
