@@ -83,6 +83,7 @@ __ http://www.joelonsoftware.com/articles/fog0000000043.html
 """
 
 import base64
+import contextlib
 import functools
 import getpass
 import io
@@ -94,6 +95,7 @@ try:
 except ImportError:
     pass  # carry on without readline support
 import sys
+import tarfile
 try:  # Python 2
     from urllib2 import urlopen, Request
 except ImportError:  # Python 3
@@ -219,25 +221,42 @@ def get_authorization_headers(username=None):
 
 def walk(template_root):
     if '://' in template_root:
-        extension = os.path.splitext(template_root)[1]
-        if extension not in ['.zip']:
+        base, extension = os.path.splitext(template_root)
+        if extension == '.gz':
+            extension = os.path.splitext(base)[1] + extension
+        if extension not in ['.tar.gz', '.zip']:
             raise NotImplementedError(
                 'unrecognized format for network-based template: {}'.format(
                     extension))
         response = urlopen(template_root)
         bytes = io.BytesIO(response.read())
-        with zipfile.ZipFile(bytes) as f:
-            directories = {}
-            for name in f.namelist():
-                if name.endswith('/'):
-                    continue
-                directory, filename = name.rsplit('/', 1)
-                if directory not in directories:
-                    directories[directory] = {}
-                directories[directory][filename] = functools.partial(
-                    f.open, name, 'r')
-            for directory, openers in sorted(directories.items()):
-                yield openers
+        directories = {}
+        if extension == '.tar.gz':
+            with tarfile.open(mode='r:*', fileobj=bytes) as f:
+                def opener(member):
+                    return contextlib.closing(f.extractfile(member))
+                for member in f.getmembers():
+                    if not member.isfile():
+                        continue
+                    directory, filename = member.name.rsplit('/', 1)
+                    if directory not in directories:
+                        directories[directory] = {}
+                    directories[directory][filename] = functools.partial(
+                        opener, member)
+                for directory, openers in sorted(directories.items()):
+                    yield openers
+        elif extension == '.zip':
+            with zipfile.ZipFile(bytes) as f:
+                for name in f.namelist():
+                    if name.endswith('/'):
+                        continue
+                    directory, filename = name.rsplit('/', 1)
+                    if directory not in directories:
+                        directories[directory] = {}
+                    directories[directory][filename] = functools.partial(
+                        f.open, name, 'r')
+                for directory, openers in sorted(directories.items()):
+                    yield openers
     else:
         for dirpath, dirnames, filenames in os.walk(top=template_root):
             openers = {}
