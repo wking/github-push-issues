@@ -112,7 +112,7 @@ def get_authorization_headers(username=None):
     return {'Authorization': auth}
 
 
-def add_issues(username=None):
+def add_issues(root_endpoint='https://api.github.com', username=None):
     authorization_headers = get_authorization_headers(username=username)
     print(authorization_headers)
 
@@ -127,8 +127,13 @@ if __name__ == '__main__':
     parser.add_argument(
         '--version', action='version',
         version='%(prog)s {}'.format(__version__))
+    parser.add_argument(
+        '--root-endpoint', default='https://api.github.com',
+        help='GitHub API root endpoint')
     parser.add_argument('-u', '--username', help='GitHub username')
 
     args = parser.parse_args()
 
-    add_issues(username=args.username)
+    add_issues(
+        root_endpoint=args.root_endpoint,
+        username=args.username)
