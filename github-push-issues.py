@@ -84,6 +84,7 @@ __ http://www.joelonsoftware.com/articles/fog0000000043.html
 
 import base64
 import getpass
+import os
 try:
     import readline
 except ImportError:
@@ -102,6 +103,23 @@ if sys.version_info < (3,):  # Python 2
 __version__ = '0.1'
 
 
+class Milestone(object):
+    def __init__(self, title=None, state='open', description=None,
+                 due_on=None):
+        self.title = title
+        self.state = state
+        self.description = description
+        self.due_on = due_on
+
+    def load(self, stream):
+        self.title = stream.readline().strip().strip('#').strip()
+        blank = stream.readline().strip()
+        if blank:
+            raise ValueError(
+                'non-blank line after the milestone title: {!r}'.format(blank))
+        self.description = ''.join(stream.readlines())
+
+
 def get_authorization_headers(username=None):
     if username is None:
         username = input('GitHub username: ')
@@ -115,6 +133,11 @@ def get_authorization_headers(username=None):
 def add_issues(root_endpoint='https://api.github.com', username=None,
                repository=None, template_root='.'):
     authorization_headers = get_authorization_headers(username=username)
+    for dirpath, dirnames, filenames in os.walk(top=template_root):
+        if 'README.md' in filenames:
+            milestone = Milestone()
+            with open(os.path.join(dirpath, 'README.md'), 'r') as f:
+                milestone.load(stream=f)
     print(authorization_headers)
 
 
