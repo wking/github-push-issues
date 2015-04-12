@@ -121,7 +121,7 @@ class _Entry(object):
         self.number = None
         self.headers = {
             'Accept': 'application/vnd.github.full+json',
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/json; charset=UTF-8',
         }
 
     def load(self, stream):
@@ -140,7 +140,7 @@ class _Entry(object):
         headers.update(self.headers)
         request = Request(
             url=url,
-            data=json.dumps(data),
+            data=json.dumps(data).encode('UTF-8'),
             headers=headers,
             #method='POST',
         )
