@@ -108,7 +108,7 @@ if sys.version_info < (3,):  # Python 2
     input = raw_input
 
 
-__version__ = '0.1'
+__version__ = '0.2'
 _LOG = logging.getLogger('github-push-issues')
 _LOG.addHandler(logging.StreamHandler())
 _LOG.setLevel(logging.DEBUG)
