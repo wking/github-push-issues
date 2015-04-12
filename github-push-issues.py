@@ -83,6 +83,7 @@ __ http://www.joelonsoftware.com/articles/fog0000000043.html
 """
 
 import base64
+import functools
 import getpass
 import json
 import logging
@@ -220,29 +221,32 @@ def walk(template_root):
             'network-based template root: {}'.format(template_root))
     else:
         for dirpath, dirnames, filenames in os.walk(top=template_root):
-            yield (dirpath, dirnames, filenames)
+            openers = {}
+            for filename in filenames:
+                path = os.path.join(dirpath, filename)
+                openers[filename] = functools.partial(open, path, 'r')
+            yield openers
 
 
 def add_issues(root_endpoint='https://api.github.com', username=None,
                repository=None, template_root='.'):
     authorization_headers = get_authorization_headers(username=username)
-    for dirpath, dirnames, filenames in walk(template_root):
+    for openers in walk(template_root):
         milestone_number = None
-        if 'README.md' in filenames:
+        if 'README.md' in openers:
             milestone = Milestone()
-            with open(os.path.join(dirpath, 'README.md'), 'r') as f:
+            with openers.pop('README.md')() as f:
                 milestone.load(stream=f)
             milestone.create(
                 root_endpoint=root_endpoint,
                 authorization_headers=authorization_headers,
                 repository=repository)
             milestone_number = milestone.number
-            filenames.remove('README.md')
-        for filename in sorted(filenames):
+        for filename, opener in sorted(openers.items()):
             if not filename.endswith('.md'):
                 continue
             issue = Issue(milestone=milestone_number)
-            with open(os.path.join(dirpath, filename), 'r') as f:
+            with opener() as f:
                 issue.load(stream=f)
             issue.create(
                 root_endpoint=root_endpoint,
