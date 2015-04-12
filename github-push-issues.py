@@ -154,6 +154,8 @@ class _Entry(object):
 
     def _create_response_json(self, json):
         self.number = json['number']
+        _LOG.info('created {} #{}: {}'.format(
+            type(self).__name__.lower(), self.number, self.title))
 
 
 class Issue(_Entry):
