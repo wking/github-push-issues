@@ -214,10 +214,19 @@ def get_authorization_headers(username=None):
     return {'Authorization': auth}
 
 
+def walk(template_root):
+    if '://' in template_root:
+        raise NotImplementedError(
+            'network-based template root: {}'.format(template_root))
+    else:
+        for dirpath, dirnames, filenames in os.walk(top=template_root):
+            yield (dirpath, dirnames, filenames)
+
+
 def add_issues(root_endpoint='https://api.github.com', username=None,
                repository=None, template_root='.'):
     authorization_headers = get_authorization_headers(username=username)
-    for dirpath, dirnames, filenames in os.walk(top=template_root):
+    for dirpath, dirnames, filenames in walk(template_root):
         milestone_number = None
         if 'README.md' in filenames:
             milestone = Milestone()
