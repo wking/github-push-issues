@@ -17,18 +17,18 @@ structure is::
   |   ...
   ...
 
-Both the ``README.md`` and per-issue files are in Markdown, with a
-summary line (which may optionally include `Atx-style headers`__)
-followed by a blank line and an optional Markdown body.  For example,
-if you want each of your product to have a ``joel`` milestone tracking
-the `Joel Test`__, you might have a ``joel/README.md`` with::
+Both the ``README.md`` and per-issue files have a summary line (which
+may optionally include `Atx-style headers`__) followed by a blank line
+and an optional body.  Milestone bodies are plain text, while issue
+bodies are GitHub flavored Markdown, For example, if you want each of
+your product to have a ``joel`` milestone tracking the `Joel Test`__,
+you might have a ``joel/README.md`` with::
 
   # joel
 
-  Keep track of how well the project handles the [Joel
-  Test][joel-test].
+  Keep track of how well the project handles the Joel Test [1].
 
-  [joel-test]: http://www.joelonsoftware.com/articles/fog0000000043.html
+  [1]: http://www.joelonsoftware.com/articles/fog0000000043.html
 
 And per-feature issue milestones like ``joel/source-control.md``::
 
