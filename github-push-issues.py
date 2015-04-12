@@ -112,6 +112,7 @@ class _Entry(object):
     def __init__(self, title=None, body=None):
         self.title = title
         self.body = body
+        self.number = None
         self.headers = {
             'Accept': 'application/vnd.github.full+json',
             'Content-Type': 'application/json',
@@ -151,6 +152,9 @@ class _Entry(object):
         payload = json.loads(payload_json)
         self._create_response_json(json=payload)
 
+    def _create_response_json(self, json):
+        self.number = json['number']
+
 
 class Issue(_Entry):
     def __init__(self, assignee=None, milestone=None, labels=None, **kwargs):
@@ -159,13 +163,28 @@ class Issue(_Entry):
         self.milestone = milestone
         self.labels = labels
 
+    def _create_url(self, root_endpoint, repository):
+        return '{}/repos/{}/issues'.format(
+            root_endpoint.rstrip('/'), repository)
+
+    def _create_data(self):
+        data = {
+            'title': self.title,
+        }
+        if self.body:
+            data['body'] = self.body
+        if self.milestone:
+            data['milestone'] = self.milestone
+        if self.labels:
+            data['labels'] = self.labels
+        return data
+
 
 class Milestone(_Entry):
     def __init__(self, state='open', due_on=None, **kwargs):
         super(Milestone, self).__init__(**kwargs)
         self.state = state
         self.due_on = due_on
-        self.number = None
 
     def _create_url(self, root_endpoint, repository):
         return '{}/repos/{}/milestones'.format(
@@ -181,9 +200,6 @@ class Milestone(_Entry):
         if self.due_on:
             data['due_on'] = self.due_on.isoformat()
         return data
-
-    def _create_response_json(self, json):
-        self.number = json['number']
 
 
 def get_authorization_headers(username=None):
@@ -217,6 +233,10 @@ def add_issues(root_endpoint='https://api.github.com', username=None,
             issue = Issue(milestone=milestone_number)
             with open(os.path.join(dirpath, filename), 'r') as f:
                 issue.load(stream=f)
+            issue.create(
+                root_endpoint=root_endpoint,
+                authorization_headers=authorization_headers,
+                repository=repository)
 
 
 if __name__ == '__main__':
