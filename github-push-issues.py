@@ -287,6 +287,7 @@ def walk(template_root):
                     yield openers
     else:
         for dirpath, dirnames, filenames in os.walk(top=template_root):
+            dirnames.sort()
             openers = {}
             for filename in filenames:
                 path = os.path.join(dirpath, filename)
