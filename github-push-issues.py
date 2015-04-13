@@ -78,8 +78,28 @@ The latter is useful if you have your template directory structure
 hosted online in a version control system that supports tar or zip
 archive snaphots.
 
+Body context subsitutions
+=========================
+
+You may want to reference other issues or milestones from a given
+issue or milestone body.  To fill this need, you can use `Python's
+format string syntax`__ to insert information from previous issues and
+milestones in a given body.  Available arguments include ``milestone``
+(a dict of ``Milestone`` instances) and ``issue`` (a dict of ``Issue``
+instances).  For example, you could have a body with::
+
+  See also #{issue[joel/source-control.md].number}.
+
+which would be expanded to::
+
+  See also #3.
+
+If the ``joel/source-control.md`` template had been created as issue
+number 3.
+
 __ http://daringfireball.net/projects/markdown/syntax#header
 __ http://www.joelonsoftware.com/articles/fog0000000043.html
+__ https://docs.python.org/3/library/string.html#format-string-syntax
 """
 
 import base64
@@ -236,7 +256,9 @@ def walk(template_root):
         if extension == '.tar.gz':
             with tarfile.open(mode='r:*', fileobj=bytes) as f:
                 def opener(member):
-                    return contextlib.closing(reader(f.extractfile(member)))
+                    opener = contextlib.closing(reader(f.extractfile(member)))
+                    opener.path = member.name
+                    return opener
                 for member in f.getmembers():
                     if not member.isfile():
                         continue
@@ -250,7 +272,9 @@ def walk(template_root):
         elif extension == '.zip':
             with zipfile.ZipFile(bytes) as f:
                 def opener(name):
-                    return reader(f.open(name, 'r'))
+                    opener = reader(f.open(name, 'r'))
+                    opener.path = name
+                    return opener
                 for name in f.namelist():
                     if name.endswith('/'):
                         continue
@@ -266,23 +290,34 @@ def walk(template_root):
             openers = {}
             for filename in filenames:
                 path = os.path.join(dirpath, filename)
-                openers[filename] = functools.partial(open, path, 'r')
+                opener = functools.partial(open, path, 'r')
+                opener.path = os.path.relpath(path, start=template_root)
+                if os.path.sep != '/':
+                    opener.path = opener.path.replace(os.path.sep, '/')
+                openers[filename] = opener
             yield openers
 
 
 def add_issues(root_endpoint='https://api.github.com', username=None,
                repository=None, template_root='.'):
     authorization_headers = get_authorization_headers(username=username)
+    context = {
+        'milestone': {},
+        'issue': {},
+    }
     for openers in walk(template_root):
         milestone_number = None
         if 'README.md' in openers:
             milestone = Milestone()
-            with openers.pop('README.md')() as f:
+            opener = openers.pop('README.md')
+            with opener() as f:
                 milestone.load(stream=f)
+            milestone.body = milestone.body.format(**context)
             milestone.create(
                 root_endpoint=root_endpoint,
                 authorization_headers=authorization_headers,
                 repository=repository)
+            context['milestone'][opener.path] = milestone
             milestone_number = milestone.number
         for filename, opener in sorted(openers.items()):
             if not filename.endswith('.md'):
@@ -290,10 +325,12 @@ def add_issues(root_endpoint='https://api.github.com', username=None,
             issue = Issue(milestone=milestone_number)
             with opener() as f:
                 issue.load(stream=f)
+            issue.body = issue.body.format(**context)
             issue.create(
                 root_endpoint=root_endpoint,
                 authorization_headers=authorization_headers,
                 repository=repository)
+            context['issue'][opener.path] = issue
 
 
 if __name__ == '__main__':
