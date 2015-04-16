@@ -31,7 +31,7 @@ from distutils.core import setup
 import os.path as _os_path
 
 
-__version__ = '0.2'
+__version__ = '0.3'
 _this_dir = _os_path.dirname(__file__)
 
 
