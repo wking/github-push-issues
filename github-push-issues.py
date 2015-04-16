@@ -235,8 +235,8 @@ def get_authorization_headers(username=None):
         username = input('GitHub username: ')
     password = getpass.getpass(prompt='GitHub password: ')
     basic_auth_payload = '{0}:{1}'.format(username, password)
-    auth = 'Basic {}'.format(
-        base64.b64encode(basic_auth_payload.encode('US-ASCII')))
+    basic_auth_bytes = base64.b64encode(basic_auth_payload.encode('US-ASCII'))
+    auth = 'Basic {}'.format(basic_auth_bytes.decode('US-ASCII'))
     return {'Authorization': auth}
 
 
